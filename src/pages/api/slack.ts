@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   }
 
   if (req.method === "POST") {
-    const { reviewers, repository, pr_id, pr_url, pr_title } = req.body;
+    const { reviewers, repository, pr_id, pr_url, pr_title, type } = req.body;
 
     // 入力のバリデーション
     if (
@@ -28,7 +28,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       typeof repository !== "string" ||
       typeof pr_id !== "number" ||
       typeof pr_url !== "string" ||
-      typeof pr_title !== "string"
+      typeof pr_title !== "string" ||
+      !["feature", "release", "hotfix"].includes(type)
     ) {
       return res.status(400).json({ message: "Invalid input" });
     }
@@ -61,10 +62,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(400).json({ message: "No valid Slack IDs found for reviewers" });
     }
 
+    // メッセージの色と内容をtypeに基づいて設定
+    let color = "good"; // デフォルトは緑色
+    let messageIntro = "新しい機能のレビュー依頼が届きました！✨🛠️"; // デフォルトメッセージ
+    let finalMessage = "レビューをよろしくお願いします！👍✨"; // デフォルトの最後の一文
+
+    if (type === "release") {
+      color = "warning"; // 黄色
+      messageIntro = "リリースPRが届きました！📦🚀";
+      finalMessage = "リリースに向けて確認をお願いします！📤✨";
+    } else if (type === "hotfix") {
+      color = "danger"; // 赤色
+      messageIntro = "🔥【HOTFIX】緊急対応のPRです！🚨\n至急レビューをお願いします！";
+      finalMessage = "早急な対応をお願いします！⏩🔥";
+    }
+
     // 有効なslack_idを1つのメッセージにまとめる
     const mentions = validSlackIds.join("さん、");
     const slackMessage = {
-      text: `${mentions}さん、レビュー依頼が届いたよ！🚀✨\n\n【タイトル】${pr_title}\n【詳細】${pr_url}\n\n💻👉コードレビューして、素敵なFBをよろしくお願いします！👍🔥`,
+      attachments: [
+        {
+          color, // typeに基づく色
+          text: `${mentions}さん、${messageIntro}\n\n【タイトル】${pr_title}\n【詳細】${pr_url}\n\n💻👉 ${finalMessage}`,
+        },
+      ],
     };
 
     // Slackにメッセージを送信
@@ -79,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // データをSupabaseに挿入
-    const { error } = await supabase.from("sent_pr").insert([{ repository, pr_id, pr_url, pr_title }]);
+    const { error } = await supabase.from("sent_pr").insert([{ repository, pr_id, pr_url, pr_title, type }]);
 
     if (error) {
       res.status(500).json({ message: "Error inserting data" });
