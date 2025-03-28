@@ -66,15 +66,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     let color = "good"; // デフォルトは緑色
     let messageIntro = "新しい機能のレビュー依頼が届きました！✨🛠️"; // デフォルトメッセージ
     let finalMessage = "レビューをよろしくお願いします！👍✨"; // デフォルトの最後の一文
+    let title = "PRレビュー依頼"; // デフォルトのタイトル
 
     if (type === "release") {
       color = "warning"; // 黄色
       messageIntro = "リリースPRが届きました！📦🚀";
       finalMessage = "リリースに向けて確認をお願いします！📤✨";
+      title = "リリースPRレビュー依頼";
     } else if (type === "hotfix") {
       color = "danger"; // 赤色
       messageIntro = "🔥【HOTFIX】緊急対応のPRです！🚨\n至急レビューをお願いします！";
       finalMessage = "早急な対応をお願いします！⏩🔥";
+      title = "🔥【HOTFIX】PRレビュー依頼🔥"; // 強調されたタイトル
     }
 
     // 有効なslack_idを1つのメッセージにまとめる
@@ -83,6 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       attachments: [
         {
           color, // typeに基づく色
+          title, // タイトルをtypeに基づいて設定
           text: `${mentions}さん、${messageIntro}\n\n【タイトル】${pr_title}\n【詳細】${pr_url}\n\n💻👉 ${finalMessage}`,
         },
       ],
