@@ -87,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         {
           color, // typeに基づく色
           title, // タイトルをtypeに基づいて設定
-          text: `${mentions}さん、${messageIntro}\n\n【タイトル】${pr_title}\n【詳細】${pr_url}\n\n💻👉 ${finalMessage}`,
+          text: `${mentions}さん、${messageIntro}\n\n【リポジトリ】${repository}\n【タイトル】${pr_title}\n【詳細】${pr_url}\n\n💻👉 ${finalMessage}`,
         },
       ],
     };
