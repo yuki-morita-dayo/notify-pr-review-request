@@ -11,7 +11,11 @@ type Data = {
   message: string;
 };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<Data>
+) {
+  return res.status(200).json({ message: "Currently under maintenance" });
   // APIキーの検証
   const apiKey = req.headers["x-api-key"];
   if (apiKey !== process.env.API_KEY) {
@@ -35,7 +39,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // データベースに同じPRが存在するか確認
-    const { data: existingPr, error: checkError } = await supabase.from("sent_pr").select("id").eq("repository", repository).eq("pr_id", pr_id).single();
+    const { data: existingPr, error: checkError } = await supabase
+      .from("sent_pr")
+      .select("id")
+      .eq("repository", repository)
+      .eq("pr_id", pr_id)
+      .single();
 
     if (checkError && checkError.code !== "PGRST116") {
       // エラーが「No rows found」でない場合はエラーを返す
@@ -48,18 +57,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 各レビュアーのslack_idを取得
-    const { data: userMapData, error: userMapError } = await supabase.from("user_map").select("slack_id").in("github_id", reviewers);
+    const { data: userMapData, error: userMapError } = await supabase
+      .from("user_map")
+      .select("slack_id")
+      .in("github_id", reviewers);
 
     if (userMapError || !userMapData) {
       return res.status(500).json({ message: "Error retrieving Slack IDs" });
     }
 
     // slack_idが存在しないレビュアーを除外
-    const validSlackIds = userMapData.filter((user) => user.slack_id).map((user) => `<@${user.slack_id}>`);
+    const validSlackIds = userMapData
+      .filter((user) => user.slack_id)
+      .map((user) => `<@${user.slack_id}>`);
 
     // 有効なslack_idが見つからない場合、処理を中断
     if (validSlackIds.length === 0) {
-      return res.status(400).json({ message: "No valid Slack IDs found for reviewers" });
+      return res
+        .status(400)
+        .json({ message: "No valid Slack IDs found for reviewers" });
     }
 
     // メッセージの色と内容をtypeに基づいて設定
@@ -75,7 +91,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       title = "リリースPRレビュー依頼";
     } else if (type === "hotfix") {
       color = "danger"; // 赤色
-      messageIntro = "🔥【HOTFIX】緊急対応のPRです！🚨\n至急レビューをお願いします！";
+      messageIntro =
+        "🔥【HOTFIX】緊急対応のPRです！🚨\n至急レビューをお願いします！";
       finalMessage = "早急な対応をお願いします！⏩🔥";
       title = "🔥【HOTFIX】PRレビュー依頼🔥"; // 強調されたタイトル
     }
@@ -100,11 +117,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     if (!response.ok) {
-      return res.status(500).json({ message: "Failed to send message to Slack" });
+      return res
+        .status(500)
+        .json({ message: "Failed to send message to Slack" });
     }
 
     // データをSupabaseに挿入
-    const { error } = await supabase.from("sent_pr").insert([{ repository, pr_id, pr_url, pr_title, type }]);
+    const { error } = await supabase
+      .from("sent_pr")
+      .insert([{ repository, pr_id, pr_url, pr_title, type }]);
 
     if (error) {
       res.status(500).json({ message: "Error inserting data" });
